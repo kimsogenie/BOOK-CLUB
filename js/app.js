@@ -71,6 +71,50 @@ function copyText(text) {
   }
 }
 
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+}
+
+// ---------------- 최근 참여한 모임 (이 브라우저 기준) ----------------
+function getClubHistory() {
+  try { return JSON.parse(localStorage.getItem("clubHistory") || "[]"); } catch (e) { return []; }
+}
+function saveClubHistory(club) {
+  let list = getClubHistory().filter(c => c.id !== club.id);
+  list.unshift({ id: club.id, name: club.name, invite_code: club.invite_code });
+  localStorage.setItem("clubHistory", JSON.stringify(list.slice(0, 6)));
+}
+function removeFromClubHistory(id) {
+  localStorage.setItem("clubHistory", JSON.stringify(getClubHistory().filter(c => c.id !== id)));
+}
+function renderRecentClubs() {
+  const list = getClubHistory();
+  const wrap = document.getElementById("recentClubsWrap");
+  const box = document.getElementById("recentClubsList");
+  if (!list.length) { wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
+  box.innerHTML = list.map(c => `<button class="recent-club-btn" data-club-id="${esc(c.id)}">${esc(c.name)}</button>`).join("");
+  box.querySelectorAll("[data-club-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.clubId;
+      const club = await DB.getClubById(id);
+      if (!club) {
+        removeFromClubHistory(id);
+        renderRecentClubs();
+        document.getElementById("landingMsg").textContent = "이 모임은 더 이상 존재하지 않아요.";
+        return;
+      }
+      await enterApp(club);
+    });
+  });
+}
+
 // ==========================================================
 // 부팅: 랜딩(모임 찾기/만들기) vs 대시보드 진입
 // ==========================================================
@@ -95,6 +139,7 @@ async function boot() {
 function showLanding() {
   document.getElementById("landingScreen").classList.remove("hidden");
   document.getElementById("appScreen").classList.add("hidden");
+  renderRecentClubs();
 }
 
 function initLandingHandlers() {
@@ -142,6 +187,7 @@ async function enterApp(club) {
   state.club = club;
   state.clubId = club.id;
   localStorage.setItem("clubId", club.id);
+  saveClubHistory(club);
   state.isOwner = !!state.myName && state.myName === club.owner_name;
 
   document.getElementById("clubCreatedModal").classList.add("hidden");
@@ -394,6 +440,7 @@ async function loadParticipation() {
         if (field === "rating") val = val ? Number(val) : null;
         if ((field === "started_at" || field === "finished_at") && val === "") val = null;
         await DB.updateParticipation(id, { [field]: val });
+        showToast("저장했어요 ✓");
         const stats = await DB.getBookStats(state.currentBook.id);
         renderProgressBar(stats);
         await loadCurrentBookStatsOnly(stats);

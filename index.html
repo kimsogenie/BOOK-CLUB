@@ -15,6 +15,10 @@
     <div class="landing-hero-title">BOOK CLUB</div>
     <div class="landing-hero-sub">우리만의 독서모임을 만들고, 초대 코드로 함께해요</div>
   </div>
+  <div id="recentClubsWrap" class="recent-clubs hidden">
+    <div class="recent-clubs-label">최근 참여한 모임</div>
+    <div id="recentClubsList" class="recent-clubs-list"></div>
+  </div>
   <div class="landing-cards">
     <div class="landing-card">
       <h3>📖 독서모임 만들기</h3>
@@ -179,6 +183,9 @@
     <div id="genericModalBody"></div>
   </div>
 </div>
+
+<!-- 저장 완료 알림 -->
+<div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
