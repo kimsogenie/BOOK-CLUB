@@ -15,30 +15,53 @@
     <div class="landing-hero-title">BOOK CLUB</div>
     <div class="landing-hero-sub">우리만의 독서모임을 만들고, 초대 코드로 함께해요</div>
   </div>
-  <div id="recentClubsWrap" class="recent-clubs hidden">
-    <div class="recent-clubs-label">최근 참여한 모임</div>
-    <div id="recentClubsList" class="recent-clubs-list"></div>
-  </div>
-  <div class="landing-cards">
+  <!-- 이메일 로그인 (실서비스 모드에서만 표시) -->
+  <div id="loginBlock" class="login-block hidden">
     <div class="landing-card">
-      <h3>📖 독서모임 만들기</h3>
-      <label>모임 이름</label>
-      <input id="createClubName" placeholder="예: 독서에 정진">
-      <label>내 이름</label>
-      <input id="createClubMyName" placeholder="예: 소진">
-      <button class="primary-btn" id="createClubBtn">만들기</button>
-    </div>
-    <div class="landing-card">
-      <h3>🔑 내 독서모임 찾기</h3>
-      <label>초대 코드</label>
-      <input id="joinClubCode" placeholder="예: AB12CD" style="text-transform:uppercase">
-      <label>내 이름</label>
-      <input id="joinClubMyName" placeholder="예: 소진">
-      <button class="primary-btn" id="joinClubBtn">참여하기</button>
+      <h3>📧 이메일로 시작하기</h3>
+      <p style="font-size:12px;color:var(--muted)">비밀번호 없이, 메일로 받은 링크만 누르면 로그인돼요. 이렇게 하면 어느 기기에서 열어도 내 모임 목록이 그대로 보여요.</p>
+      <label>이메일 주소</label>
+      <input id="loginEmail" type="email" placeholder="you@example.com">
+      <button class="primary-btn" id="sendMagicLinkBtn">로그인 링크 받기</button>
+      <div id="loginMsg" class="landing-msg" style="color:var(--ink)"></div>
     </div>
   </div>
-  <div id="landingMsg" class="landing-msg"></div>
-  <div id="landingDemoHint" class="landing-demo-hint hidden"></div>
+
+  <div id="loggedInBar" class="logged-in-bar hidden">
+    <span id="loggedInName"></span>
+    <button class="ghost-btn small" id="signOutBtn">로그아웃</button>
+  </div>
+
+  <div id="clubChooser" class="hidden">
+    <div id="recentClubsWrap" class="recent-clubs hidden">
+      <div class="recent-clubs-label" id="recentClubsLabel">최근 참여한 모임</div>
+      <div id="recentClubsList" class="recent-clubs-list"></div>
+    </div>
+    <div class="landing-cards">
+      <div class="landing-card">
+        <h3>📖 독서모임 만들기</h3>
+        <label>모임 이름</label>
+        <input id="createClubName" placeholder="예: 독서에 정진">
+        <div id="createNameField">
+          <label>내 이름</label>
+          <input id="createClubMyName" placeholder="예: 소진">
+        </div>
+        <button class="primary-btn" id="createClubBtn">만들기</button>
+      </div>
+      <div class="landing-card">
+        <h3>🔑 내 독서모임 찾기</h3>
+        <label>초대 코드</label>
+        <input id="joinClubCode" placeholder="예: AB12CD" style="text-transform:uppercase">
+        <div id="joinNameField">
+          <label>내 이름</label>
+          <input id="joinClubMyName" placeholder="예: 소진">
+        </div>
+        <button class="primary-btn" id="joinClubBtn">참여하기</button>
+      </div>
+    </div>
+    <div id="landingMsg" class="landing-msg"></div>
+    <div id="landingDemoHint" class="landing-demo-hint hidden"></div>
+  </div>
 </div>
 
 <!-- 🎉 모임 생성 완료 -->

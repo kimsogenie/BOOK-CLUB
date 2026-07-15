@@ -32,20 +32,64 @@ function genInviteCode() {
 
 const DB = {
   isDemo: DEMO_MODE,
+  authEnabled: !DEMO_MODE,
+
+  // ================= 인증 (이메일 매직링크) =================
+  async getSession() {
+    if (DEMO_MODE) return null;
+    const { data } = await sb.auth.getSession();
+    return data.session || null;
+  },
+  onAuthChange(callback) {
+    if (DEMO_MODE) return;
+    sb.auth.onAuthStateChange((_event, session) => callback(session));
+  },
+  async sendMagicLink(email) {
+    if (DEMO_MODE) throw new Error("데모 모드에서는 로그인이 필요 없어요");
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+  },
+  async signOut() {
+    if (DEMO_MODE) return;
+    await sb.auth.signOut();
+  },
+  async getProfile(userId) {
+    if (DEMO_MODE) return null;
+    const { data, error } = await sb.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  async createProfile(userId, displayName) {
+    if (DEMO_MODE) return null;
+    const { data, error } = await sb.from("profiles").insert({ id: userId, display_name: displayName }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async getMyClubs(userId) {
+    if (DEMO_MODE || !userId) return [];
+    const { data, error } = await sb.from("club_members").select("clubs(id,name,invite_code,owner_id,owner_name)").eq("user_id", userId);
+    if (error) throw error;
+    return (data || []).map(r => r.clubs).filter(Boolean);
+  },
 
   // ================= 모임 (clubs) =================
-  async createClub(name, ownerName) {
+  async createClub(name, ownerName, ownerId) {
     const invite_code = genInviteCode();
     let club;
     if (DEMO_MODE) {
-      club = { id: mockUid(), name, invite_code, owner_name: ownerName, created_at: new Date().toISOString() };
+      club = { id: mockUid(), name, invite_code, owner_name: ownerName, owner_id: ownerId || null, created_at: new Date().toISOString() };
       getMockStore().clubs.push(club);
     } else {
-      const { data, error } = await sb.from("clubs").insert({ name, invite_code, owner_name: ownerName }).select().single();
+      const payload = { name, invite_code, owner_name: ownerName };
+      if (ownerId) payload.owner_id = ownerId;
+      const { data, error } = await sb.from("clubs").insert(payload).select().single();
       if (error) throw error;
       club = data;
     }
-    await this.joinClub(club.id, ownerName);
+    await this.joinClub(club.id, ownerName, ownerId);
     return club;
   },
 
@@ -92,15 +136,21 @@ const DB = {
   },
 
   // ================= 멤버 =================
-  async joinClub(clubId, name) {
+  async joinClub(clubId, name, userId) {
     if (DEMO_MODE) {
       const store = getMockStore();
       const exists = store.club_members.some(m => m.club_id === clubId && m.member_name === name);
       if (!exists) store.club_members.push({ id: mockUid(), club_id: clubId, member_name: name, joined_at: new Date().toISOString() });
       return true;
     }
-    const { data } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("member_name", name).maybeSingle();
-    if (!data) await sb.from("club_members").insert({ club_id: clubId, member_name: name });
+    if (userId) {
+      const { data } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("user_id", userId).maybeSingle();
+      if (!data) await sb.from("club_members").insert({ club_id: clubId, member_name: name, user_id: userId });
+      else await sb.from("club_members").update({ member_name: name }).eq("id", data.id);
+    } else {
+      const { data } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("member_name", name).maybeSingle();
+      if (!data) await sb.from("club_members").insert({ club_id: clubId, member_name: name });
+    }
     return true;
   },
 

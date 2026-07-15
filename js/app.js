@@ -37,7 +37,9 @@ const state = {
   isOwner: false,
   currentBook: null,
   activeType: "quote",
-  sort: "new"
+  sort: "new",
+  userId: null,
+  userEmail: null
 };
 
 // ---------------- 유틸 ----------------
@@ -93,10 +95,20 @@ function saveClubHistory(club) {
 function removeFromClubHistory(id) {
   localStorage.setItem("clubHistory", JSON.stringify(getClubHistory().filter(c => c.id !== id)));
 }
-function renderRecentClubs() {
-  const list = getClubHistory();
+async function renderRecentClubs() {
   const wrap = document.getElementById("recentClubsWrap");
   const box = document.getElementById("recentClubsList");
+  const label = document.getElementById("recentClubsLabel");
+
+  let list;
+  if (DB.isDemo) {
+    label.textContent = "최근 참여한 모임";
+    list = getClubHistory();
+  } else {
+    label.textContent = "내 모임";
+    list = await DB.getMyClubs(state.userId);
+  }
+
   if (!list.length) { wrap.classList.add("hidden"); return; }
   wrap.classList.remove("hidden");
   box.innerHTML = list.map(c => `<button class="recent-club-btn" data-club-id="${esc(c.id)}">${esc(c.name)}</button>`).join("");
@@ -105,7 +117,7 @@ function renderRecentClubs() {
       const id = btn.dataset.clubId;
       const club = await DB.getClubById(id);
       if (!club) {
-        removeFromClubHistory(id);
+        if (DB.isDemo) removeFromClubHistory(id);
         renderRecentClubs();
         document.getElementById("landingMsg").textContent = "이 모임은 더 이상 존재하지 않아요.";
         return;
@@ -115,16 +127,74 @@ function renderRecentClubs() {
   });
 }
 
-// ==========================================================
-// 부팅: 랜딩(모임 찾기/만들기) vs 대시보드 진입
-// ==========================================================
-async function boot() {
-  if (DB.isDemo) {
-    document.getElementById("landingDemoHint").classList.remove("hidden");
-    document.getElementById("landingDemoHint").textContent =
-      `🧪 데모 모드: "내 독서모임 찾기"에서 초대 코드 ${window.__DEMO_CLUB_CODE || "DEMO01"} 을 입력하면 예시 모임으로 바로 들어갈 수 있어요.`;
+// ---------------- 이메일 로그인 (실서비스 모드) ----------------
+function promptDisplayName() {
+  return new Promise(resolve => {
+    openGenericModal(`
+      <h3>👋 반가워요</h3>
+      <p style="font-size:13px;color:var(--muted)">다른 멤버에게 보여질 이름을 정해주세요.</p>
+      <label>표시 이름</label>
+      <input id="displayNameInput" placeholder="예: 소진">
+      <div class="submit-row"><button class="primary-btn" id="submitDisplayName">확인</button></div>
+    `);
+    document.getElementById("submitDisplayName").addEventListener("click", () => {
+      const v = document.getElementById("displayNameInput").value.trim();
+      if (!v) return;
+      closeGenericModal();
+      resolve(v);
+    });
+  });
+}
+
+function initAuthHandlers() {
+  const sendBtn = document.getElementById("sendMagicLinkBtn");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const msg = document.getElementById("loginMsg");
+      if (!email) { msg.textContent = "이메일을 입력해주세요."; return; }
+      msg.textContent = "전송 중...";
+      try {
+        await DB.sendMagicLink(email);
+        msg.textContent = "메일함을 확인해주세요! 받은 링크를 누르면 로그인돼요.";
+      } catch (e) {
+        msg.textContent = "전송에 실패했어요. 이메일 주소를 확인해주세요.";
+      }
+    });
   }
-  initLandingHandlers();
+  const signOutBtn = document.getElementById("signOutBtn");
+  if (signOutBtn) {
+    signOutBtn.addEventListener("click", async () => {
+      await DB.signOut();
+      localStorage.removeItem("clubId");
+      location.reload();
+    });
+  }
+}
+
+function showLoginOnly() {
+  document.getElementById("landingScreen").classList.remove("hidden");
+  document.getElementById("appScreen").classList.add("hidden");
+  document.getElementById("loginBlock").classList.remove("hidden");
+  document.getElementById("loggedInBar").classList.add("hidden");
+  document.getElementById("clubChooser").classList.add("hidden");
+}
+
+async function handleAuthedSession(session) {
+  state.userId = session.user.id;
+  state.userEmail = session.user.email;
+
+  let profile = await DB.getProfile(state.userId);
+  if (!profile) {
+    const name = await promptDisplayName();
+    profile = await DB.createProfile(state.userId, name);
+  }
+  state.myName = profile.display_name;
+  localStorage.setItem("clubMyName", state.myName);
+
+  document.getElementById("loginBlock").classList.add("hidden");
+  document.getElementById("loggedInBar").classList.remove("hidden");
+  document.getElementById("loggedInName").textContent = `${state.myName} (${state.userEmail})`;
 
   if (state.clubId) {
     try {
@@ -136,23 +206,63 @@ async function boot() {
   showLanding();
 }
 
+// ==========================================================
+// 부팅: 랜딩(모임 찾기/만들기) vs 대시보드 진입
+// ==========================================================
+async function boot() {
+  initLandingHandlers();
+  initAuthHandlers();
+
+  if (DB.isDemo) {
+    document.getElementById("landingDemoHint").classList.remove("hidden");
+    document.getElementById("landingDemoHint").textContent =
+      `🧪 데모 모드: "내 독서모임 찾기"에서 초대 코드 ${window.__DEMO_CLUB_CODE || "DEMO01"} 을 입력하면 예시 모임으로 바로 들어갈 수 있어요.`;
+    if (state.clubId) {
+      try {
+        const club = await DB.getClubById(state.clubId);
+        if (club) { await enterApp(club); return; }
+      } catch (e) { /* 무시하고 랜딩으로 */ }
+      localStorage.removeItem("clubId");
+    }
+    showLanding();
+    return;
+  }
+
+  // 실서비스 모드: 이메일 로그인 필요
+  DB.onAuthChange(async session => {
+    if (session && !state.userId) await handleAuthedSession(session);
+    if (!session && state.userId) {
+      state.userId = null;
+      state.userEmail = null;
+      showLoginOnly();
+    }
+  });
+  const session = await DB.getSession();
+  if (session) await handleAuthedSession(session);
+  else showLoginOnly();
+}
+
 function showLanding() {
   document.getElementById("landingScreen").classList.remove("hidden");
   document.getElementById("appScreen").classList.add("hidden");
+  document.getElementById("clubChooser").classList.remove("hidden");
+  if (!DB.isDemo) {
+    document.getElementById("createNameField").classList.add("hidden");
+    document.getElementById("joinNameField").classList.add("hidden");
+  }
   renderRecentClubs();
 }
 
 function initLandingHandlers() {
   document.getElementById("createClubBtn").addEventListener("click", async () => {
     const name = document.getElementById("createClubName").value.trim();
-    const myName = document.getElementById("createClubMyName").value.trim();
+    const myName = DB.isDemo ? document.getElementById("createClubMyName").value.trim() : state.myName;
     const msg = document.getElementById("landingMsg");
     if (!name || !myName) { msg.textContent = "모임 이름과 내 이름을 모두 입력해주세요."; return; }
     msg.textContent = "만드는 중...";
     try {
-      const club = await DB.createClub(name, myName);
-      state.myName = myName;
-      localStorage.setItem("clubMyName", myName);
+      const club = await DB.createClub(name, myName, state.userId);
+      if (DB.isDemo) { state.myName = myName; localStorage.setItem("clubMyName", myName); }
       msg.textContent = "";
       document.getElementById("createdInviteCode").textContent = club.invite_code;
       document.getElementById("clubCreatedModal").classList.remove("hidden");
@@ -165,16 +275,15 @@ function initLandingHandlers() {
 
   document.getElementById("joinClubBtn").addEventListener("click", async () => {
     const code = document.getElementById("joinClubCode").value.trim();
-    const myName = document.getElementById("joinClubMyName").value.trim();
+    const myName = DB.isDemo ? document.getElementById("joinClubMyName").value.trim() : state.myName;
     const msg = document.getElementById("landingMsg");
     if (!code || !myName) { msg.textContent = "초대 코드와 내 이름을 모두 입력해주세요."; return; }
     msg.textContent = "찾는 중...";
     try {
       const club = await DB.getClubByCode(code);
       if (!club) { msg.textContent = "해당 코드의 모임을 찾을 수 없어요. 코드를 다시 확인해주세요."; return; }
-      await DB.joinClub(club.id, myName);
-      state.myName = myName;
-      localStorage.setItem("clubMyName", myName);
+      await DB.joinClub(club.id, myName, state.userId);
+      if (DB.isDemo) { state.myName = myName; localStorage.setItem("clubMyName", myName); }
       msg.textContent = "";
       await enterApp(club);
     } catch (e) {
@@ -187,8 +296,11 @@ async function enterApp(club) {
   state.club = club;
   state.clubId = club.id;
   localStorage.setItem("clubId", club.id);
-  saveClubHistory(club);
-  state.isOwner = !!state.myName && state.myName === club.owner_name;
+  if (DB.isDemo) saveClubHistory(club);
+  state.isOwner = !!state.myName && (
+    (club.owner_id && state.userId && club.owner_id === state.userId) ||
+    (!club.owner_id && club.owner_name === state.myName)
+  );
 
   document.getElementById("clubCreatedModal").classList.add("hidden");
   document.getElementById("landingScreen").classList.add("hidden");
@@ -246,13 +358,14 @@ function initNameGate() {
     document.getElementById("whoamiName").textContent = v;
     state.isOwner = !!state.club && v === state.club.owner_name;
     updateOwnerUI();
-    if (state.club) await DB.joinClub(state.club.id, v);
+    if (state.club) await DB.joinClub(state.club.id, v, state.userId);
     gate.classList.add("hidden");
     await refreshUserDependentViews();
   };
   input.onkeydown = e => { if (e.key === "Enter") document.getElementById("nameSubmit").click(); };
 
   document.getElementById("switchNameBtn").onclick = () => gate.classList.remove("hidden");
+  document.getElementById("switchNameBtn").classList.toggle("hidden", !DB.isDemo);
 }
 
 async function refreshUserDependentViews() {
