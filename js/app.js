@@ -375,8 +375,13 @@ async function refreshUserDependentViews() {
 }
 
 function initLeaveAndDelete() {
-  document.getElementById("leaveClubBtn").onclick = () => {
-    if (!confirm("모임에서 나가시겠어요? 초대 코드를 다시 입력하면 언제든 돌아올 수 있어요.")) return;
+  document.getElementById("backHomeBtn").onclick = () => {
+    localStorage.removeItem("clubId");
+    location.reload();
+  };
+  document.getElementById("leaveClubBtn").onclick = async () => {
+    if (!confirm("정말로 이 모임에서 나가시겠어요? 멤버 목록에서 빠지고, 다시 참여하려면 초대 코드가 필요해요.")) return;
+    try { if (state.myName) await DB.kickMember(state.clubId, state.myName); } catch (e) { /* 무시 */ }
     localStorage.removeItem("clubId");
     location.reload();
   };
