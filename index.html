@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOOK CLUB</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 🚪 랜딩: 모임 만들기 / 찾기 -->
+<div id="landingScreen" class="landing-screen">
+  <div class="landing-hero">
+    <div class="landing-hero-title">BOOK CLUB</div>
+    <div class="landing-hero-sub">우리만의 독서모임을 만들고, 초대 코드로 함께해요</div>
+  </div>
+  <div class="landing-cards">
+    <div class="landing-card">
+      <h3>📖 독서모임 만들기</h3>
+      <label>모임 이름</label>
+      <input id="createClubName" placeholder="예: 독서에 정진">
+      <label>내 이름</label>
+      <input id="createClubMyName" placeholder="예: 소진">
+      <button class="primary-btn" id="createClubBtn">만들기</button>
+    </div>
+    <div class="landing-card">
+      <h3>🔑 내 독서모임 찾기</h3>
+      <label>초대 코드</label>
+      <input id="joinClubCode" placeholder="예: AB12CD" style="text-transform:uppercase">
+      <label>내 이름</label>
+      <input id="joinClubMyName" placeholder="예: 소진">
+      <button class="primary-btn" id="joinClubBtn">참여하기</button>
+    </div>
+  </div>
+  <div id="landingMsg" class="landing-msg"></div>
+  <div id="landingDemoHint" class="landing-demo-hint hidden"></div>
+</div>
+
+<!-- 🎉 모임 생성 완료 -->
+<div id="clubCreatedModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>🎉 모임이 만들어졌어요</h3>
+    <p style="font-size:13px;color:var(--muted)">아래 코드를 멤버들에게 공유하세요. 이 코드로 "내 독서모임 찾기"에서 바로 들어올 수 있어요.</p>
+    <div class="invite-code-display" id="createdInviteCode"></div>
+    <button class="ghost-btn small" id="copyInviteCodeBtn">코드 복사</button>
+    <div class="submit-row"><button class="primary-btn" id="enterDashboardBtn">대시보드로 이동</button></div>
+  </div>
+</div>
+
+<!-- 📱 앱 화면 -->
+<div id="appScreen" class="hidden">
+
+<div id="nameGate" class="name-gate hidden">
+  <div class="name-gate-box">
+    <h2>👋 반가워요</h2>
+    <p>참여자 이름을 입력하면 좋아요·댓글·추천 등을 남길 수 있어요.</p>
+    <input id="nameInput" type="text" placeholder="이름 (예: 소진)" maxlength="20">
+    <button id="nameSubmit">입장하기</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">📚 <span id="clubTitle">BOOK CLUB</span> <span id="inviteCodeBadge" class="invite-badge hidden"></span></div>
+    <div class="whoami">
+      <span id="whoamiName">-</span>
+      <button id="manageMembersBtn" class="ghost-btn small hidden">멤버 관리</button>
+      <button id="switchNameBtn" class="ghost-btn small">이름 변경</button>
+      <button id="leaveClubBtn" class="ghost-btn small">모임 나가기</button>
+    </div>
+  </div>
+</header>
+
+<div id="demoBanner" class="demo-banner hidden">
+  🧪 데모 모드입니다 (Supabase 미연결). <code>js/config.js</code>에 프로젝트 URL/키를 넣으면 실제 데이터로 전환돼요.
+</div>
+
+<main class="dashboard">
+
+  <!-- 📢 공지사항 -->
+  <section class="card announcement-card">
+    <div class="announcement-head">
+      <span>📢 공지사항</span>
+      <button id="editAnnouncementBtn" class="ghost-btn small hidden">편집</button>
+    </div>
+    <div id="announcementBody" class="announcement-body">불러오는 중...</div>
+  </section>
+
+  <!-- 📖 이번 독서모임 도서 -->
+  <section class="card book-card">
+    <div class="section-title-row">
+      <div class="section-title">📖 이번 독서모임 도서</div>
+      <div id="bookOwnerActions" class="hidden">
+        <button id="addBookBtn" class="ghost-btn small">+ 책 등록</button>
+        <button id="finishBookBtn" class="ghost-btn small">완료 처리</button>
+      </div>
+    </div>
+    <div id="currentBook" class="current-book">불러오는 중...</div>
+  </section>
+
+  <!-- 👥 참여 현황 -->
+  <details class="card toggle-card" open>
+    <summary class="section-title">👥 참여 현황</summary>
+    <div id="progressBarWrap" class="progress-wrap"></div>
+    <table class="data-table" id="participationTable">
+      <thead>
+        <tr>
+          <th>참여자</th><th>읽기 상태</th><th>별점</th><th>한 줄 평</th><th>시작일</th><th>완독일</th>
+        </tr>
+      </thead>
+      <tbody id="participationBody"></tbody>
+    </table>
+    <button id="addParticipantBtn" class="primary-btn small">+ 참여자 추가</button>
+  </details>
+
+  <!-- ✍️ 활동 기록 -->
+  <section class="card">
+    <div class="section-title">✍️ 활동 기록</div>
+    <div class="tabs" id="activityTabs">
+      <button class="tab-btn active" data-type="quote">📝 문장 수집</button>
+      <button class="tab-btn" data-type="topic">💬 발제</button>
+      <button class="tab-btn" data-type="review">📖 독후감</button>
+      <button class="tab-btn" data-type="reflection">🌿 토론 후 감상</button>
+    </div>
+
+    <div id="activityFormWrap" class="activity-form-wrap"></div>
+
+    <div class="activity-list-head">
+      <span id="activityListLabel">문장 수집 목록</span>
+      <select id="activitySort">
+        <option value="new">최신순</option>
+        <option value="likes">좋아요 많은순</option>
+      </select>
+    </div>
+    <div id="activityList" class="activity-list"></div>
+  </section>
+
+  <!-- 📚 추천 도서 -->
+  <details class="card toggle-card">
+    <summary class="section-title">📚 다음 독서모임 추천</summary>
+    <div id="recoFormWrap" class="reco-form-wrap"></div>
+    <div id="recoList" class="reco-list"></div>
+  </details>
+
+  <!-- 📂 지난 독서모임 -->
+  <details class="card toggle-card">
+    <summary class="section-title">📂 지난 독서모임</summary>
+    <div id="archiveList" class="archive-list"></div>
+  </details>
+
+  <!-- 👤 마이페이지 -->
+  <details class="card toggle-card">
+    <summary class="section-title">👤 마이페이지 (내 활동 모아보기)</summary>
+    <div id="myPage" class="my-page"></div>
+  </details>
+
+  <!-- ⚠️ 방장 전용: 모임 삭제 -->
+  <div id="dangerZone" class="danger-zone hidden">
+    <button id="deleteClubBtn" class="ghost-btn small danger">모임 삭제</button>
+  </div>
+
+</main>
+
+</div><!-- /#appScreen -->
+
+<!-- 책 상세 (지난 모임용) 모달 -->
+<div id="bookDetailModal" class="modal hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="closeBookDetail">✕</button>
+    <div id="bookDetailBody"></div>
+  </div>
+</div>
+
+<!-- 범용 모달 (참여자 추가, 공지 편집, 책 등록, 멤버 관리 등) -->
+<div id="genericModal" class="modal hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="closeGenericModal">✕</button>
+    <div id="genericModalBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/mockData.js"></script>
+<script src="js/supabaseClient.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
