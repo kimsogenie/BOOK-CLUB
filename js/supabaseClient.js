@@ -70,9 +70,39 @@ const DB = {
   },
   async getMyClubs(userId) {
     if (DEMO_MODE || !userId) return [];
-    const { data, error } = await sb.from("club_members").select("clubs(id,name,invite_code,owner_id,owner_name)").eq("user_id", userId);
+    const { data, error } = await sb.from("club_members").select("clubs(id,name,invite_code,owner_id,owner_name,cover_url)").eq("user_id", userId);
     if (error) throw error;
     return (data || []).map(r => r.clubs).filter(Boolean);
+  },
+
+  // ================= 모임 커버 이미지 =================
+  async uploadCoverImage(file) {
+    if (DEMO_MODE) {
+      // 데모 모드는 실제 저장소가 없으니, 이 브라우저 세션 동안만 미리보기용으로 보여줘요
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `club-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await sb.storage.from("covers").upload(path, file, { upsert: false });
+    if (error) throw error;
+    const { data } = sb.storage.from("covers").getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  async updateClub(clubId, fields) {
+    if (DEMO_MODE) {
+      const row = getMockStore().clubs.find(c => c.id === clubId);
+      if (row) Object.assign(row, fields);
+      return row;
+    }
+    const { data, error } = await sb.from("clubs").update(fields).eq("id", clubId).select().single();
+    if (error) throw error;
+    return data;
   },
 
   // ================= 오류 신고 / 의견 =================

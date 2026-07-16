@@ -89,7 +89,7 @@ function getClubHistory() {
 }
 function saveClubHistory(club) {
   let list = getClubHistory().filter(c => c.id !== club.id);
-  list.unshift({ id: club.id, name: club.name, invite_code: club.invite_code });
+  list.unshift({ id: club.id, name: club.name, invite_code: club.invite_code, cover_url: club.cover_url || null });
   localStorage.setItem("clubHistory", JSON.stringify(list.slice(0, 6)));
 }
 function removeFromClubHistory(id) {
@@ -111,7 +111,16 @@ async function renderRecentClubs() {
 
   if (!list.length) { wrap.classList.add("hidden"); return; }
   wrap.classList.remove("hidden");
-  box.innerHTML = list.map(c => `<button class="recent-club-btn" data-club-id="${esc(c.id)}">${esc(c.name)}</button>`).join("");
+  box.innerHTML = list.map(c => `
+    <button class="my-club-card" data-club-id="${esc(c.id)}">
+      ${c.cover_url
+        ? `<img class="my-club-cover" src="${esc(c.cover_url)}" alt="">`
+        : `<div class="my-club-cover">📚</div>`}
+      <div class="my-club-body">
+        <div class="my-club-name">${esc(c.name)}</div>
+      </div>
+    </button>
+  `).join("");
   box.querySelectorAll("[data-club-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.clubId;
@@ -378,6 +387,7 @@ async function enterApp(club) {
   initMemberManagement();
   initBookOwnerActions();
   initLeaveAndDelete();
+  initCoverEditor();
   renderActivityForm();
   renderRecoForm();
 
@@ -392,8 +402,41 @@ function updateOwnerUI() {
   const show = el => el.classList.toggle("hidden", !state.isOwner);
   show(document.getElementById("editAnnouncementBtn"));
   show(document.getElementById("bookOwnerActions"));
+  show(document.getElementById("editCoverBtn"));
   show(document.getElementById("manageMembersBtn"));
   show(document.getElementById("dangerZone"));
+}
+
+// ---------------- 모임 커버 이미지 (방장 전용) ----------------
+function initCoverEditor() {
+  const btn = document.getElementById("editCoverBtn");
+  if (!btn) return;
+  btn.onclick = () => {
+    if (!requireOwner()) return;
+    openGenericModal(`
+      <h3>🖼 모임 커버 이미지</h3>
+      <p style="font-size:12px;color:var(--muted)">"내 모임" 목록에서 이 모임의 대표 이미지로 보여져요.</p>
+      ${state.club.cover_url ? `<img src="${esc(state.club.cover_url)}" style="width:100%;border-radius:10px;margin:8px 0" alt="">` : ""}
+      <label>이미지 선택 (5MB 이하)</label>
+      <input type="file" id="coverFileInput" accept="image/*">
+      <div class="submit-row"><button class="primary-btn" id="submitCover">업로드</button></div>
+    `);
+    document.getElementById("submitCover").addEventListener("click", async () => {
+      const fileInput = document.getElementById("coverFileInput");
+      const file = fileInput.files[0];
+      if (!file) { alert("이미지를 선택해주세요."); return; }
+      if (file.size > 5 * 1024 * 1024) { alert("5MB 이하 이미지로 올려주세요."); return; }
+      try {
+        const url = await DB.uploadCoverImage(file);
+        await DB.updateClub(state.clubId, { cover_url: url });
+        state.club.cover_url = url;
+        closeGenericModal();
+        showToast("커버 이미지를 저장했어요 ✓");
+      } catch (e) {
+        alert("업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+      }
+    });
+  };
 }
 
 // ---------------- 이름 게이트 ----------------
