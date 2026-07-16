@@ -144,9 +144,20 @@ const DB = {
       return true;
     }
     if (userId) {
-      const { data } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("user_id", userId).maybeSingle();
-      if (!data) await sb.from("club_members").insert({ club_id: clubId, member_name: name, user_id: userId });
-      else await sb.from("club_members").update({ member_name: name }).eq("id", data.id);
+      // 1) 이미 이 계정으로 연결된 멤버십이 있으면 이름만 갱신
+      const { data: byUser } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("user_id", userId).maybeSingle();
+      if (byUser) {
+        await sb.from("club_members").update({ member_name: name }).eq("id", byUser.id);
+        return true;
+      }
+      // 2) 로그인 기능 도입 전, 이름만으로 만들어진 예전 멤버십이 있으면 계정과 연결
+      const { data: byName } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("member_name", name).is("user_id", null).maybeSingle();
+      if (byName) {
+        await sb.from("club_members").update({ user_id: userId }).eq("id", byName.id);
+        return true;
+      }
+      // 3) 둘 다 없으면 새로 추가
+      await sb.from("club_members").insert({ club_id: clubId, member_name: name, user_id: userId });
     } else {
       const { data } = await sb.from("club_members").select("id").eq("club_id", clubId).eq("member_name", name).maybeSingle();
       if (!data) await sb.from("club_members").insert({ club_id: clubId, member_name: name });

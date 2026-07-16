@@ -302,6 +302,11 @@ async function enterApp(club) {
     (!club.owner_id && club.owner_name === state.myName)
   );
 
+  // 로그인 도입 전에 만들어진 예전 멤버십도 이번 방문에서 계정과 자동으로 연결
+  if (!DB.isDemo && state.userId && state.myName) {
+    try { await DB.joinClub(club.id, state.myName, state.userId); } catch (e) { /* 무시 */ }
+  }
+
   document.getElementById("clubCreatedModal").classList.add("hidden");
   document.getElementById("landingScreen").classList.add("hidden");
   document.getElementById("appScreen").classList.remove("hidden");
@@ -859,9 +864,11 @@ async function openBookDetail(bookId) {
     <p style="color:var(--muted);font-size:13px">${esc(book.author || "")} · ${fmtDate(book.meeting_date)} · ⭐ 평균 ${stats.avg_rating ?? "-"} · 👥 ${stats.participant_count}명</p>
     <p style="font-size:13px">${esc(book.description || "")}</p>
     <h4>참여 기록</h4>
-    <table class="data-table"><thead><tr><th>참여자</th><th>별점</th><th>한 줄 평</th></tr></thead>
-      <tbody>${parts.map(p => `<tr><td>${esc(p.participant_name)}</td><td>${p.rating ? "⭐".repeat(p.rating) : "-"}</td><td>${esc(p.one_liner || "")}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#999">기록 없음</td></tr>`}</tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="data-table"><thead><tr><th>참여자</th><th>별점</th><th>한 줄 평</th></tr></thead>
+        <tbody>${parts.map(p => `<tr><td>${esc(p.participant_name)}</td><td>${p.rating ? "⭐".repeat(p.rating) : "-"}</td><td>${esc(p.one_liner || "")}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#999">기록 없음</td></tr>`}</tbody>
+      </table>
+    </div>
     ${sections.map(s => `
       <h4 style="margin-top:16px">${TYPE_LABEL[s.t]}</h4>
       <div id="archive-${s.t}"></div>

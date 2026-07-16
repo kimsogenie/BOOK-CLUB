@@ -130,14 +130,16 @@
   <details class="card toggle-card" open>
     <summary class="section-title">👥 참여 현황</summary>
     <div id="progressBarWrap" class="progress-wrap"></div>
-    <table class="data-table" id="participationTable">
-      <thead>
-        <tr>
-          <th>참여자</th><th>읽기 상태</th><th>별점</th><th>한 줄 평</th><th>시작일</th><th>완독일</th>
-        </tr>
-      </thead>
-      <tbody id="participationBody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="data-table" id="participationTable">
+        <thead>
+          <tr>
+            <th>참여자</th><th>읽기 상태</th><th>별점</th><th>한 줄 평</th><th>시작일</th><th>완독일</th>
+          </tr>
+        </thead>
+        <tbody id="participationBody"></tbody>
+      </table>
+    </div>
     <button id="addParticipantBtn" class="primary-btn small">+ 참여자 추가</button>
   </details>
 
