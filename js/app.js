@@ -207,6 +207,8 @@ async function handleAuthedSession(session) {
 }
 
 // ---------------- 오류 신고 / 의견 보내기 ----------------
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/xqerelrk";
+
 function initFeedback() {
   const btn = document.getElementById("reportIssueBtn");
   if (!btn) return;
@@ -224,11 +226,28 @@ function initFeedback() {
       const msg = document.getElementById("feedbackMsg").value.trim();
       if (!msg) { alert("내용을 입력해주세요."); return; }
       const email = document.getElementById("feedbackEmail").value.trim() || state.userEmail || null;
+      let ok = false;
       try {
         await DB.submitFeedback(msg, state.myName || null, email, location.pathname);
+        ok = true;
+      } catch (e) { /* Supabase 저장 실패해도 아래 이메일 알림은 시도 */ }
+      try {
+        await fetch(FORMSPREE_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            message: msg,
+            name: state.myName || "(익명)",
+            email: email || "",
+            page: location.pathname
+          })
+        });
+        ok = true;
+      } catch (e) { /* 네트워크 문제 등 - 무시 */ }
+      if (ok) {
         closeGenericModal();
         showToast("보내주셔서 감사해요 🙏");
-      } catch (e) {
+      } else {
         alert("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
       }
     });
