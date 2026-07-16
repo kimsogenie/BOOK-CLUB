@@ -206,12 +206,42 @@ async function handleAuthedSession(session) {
   showLanding();
 }
 
+// ---------------- 오류 신고 / 의견 보내기 ----------------
+function initFeedback() {
+  const btn = document.getElementById("reportIssueBtn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    openGenericModal(`
+      <h3>🐞 오류·의견 보내기</h3>
+      <p style="font-size:13px;color:var(--muted)">사용하다가 이상했던 점이나 있었으면 하는 기능을 편하게 알려주세요.</p>
+      <label>내용 *</label>
+      <textarea id="feedbackMsg" placeholder="예: 참여 현황 표에서 별점을 지울 수가 없어요"></textarea>
+      <label>답장 받을 이메일 (선택)</label>
+      <input id="feedbackEmail" type="email" placeholder="you@example.com">
+      <div class="submit-row"><button class="primary-btn" id="submitFeedback">보내기</button></div>
+    `);
+    document.getElementById("submitFeedback").addEventListener("click", async () => {
+      const msg = document.getElementById("feedbackMsg").value.trim();
+      if (!msg) { alert("내용을 입력해주세요."); return; }
+      const email = document.getElementById("feedbackEmail").value.trim() || state.userEmail || null;
+      try {
+        await DB.submitFeedback(msg, state.myName || null, email, location.pathname);
+        closeGenericModal();
+        showToast("보내주셔서 감사해요 🙏");
+      } catch (e) {
+        alert("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
+      }
+    });
+  });
+}
+
 // ==========================================================
 // 부팅: 랜딩(모임 찾기/만들기) vs 대시보드 진입
 // ==========================================================
 async function boot() {
   initLandingHandlers();
   initAuthHandlers();
+  initFeedback();
 
   if (DB.isDemo) {
     document.getElementById("landingDemoHint").classList.remove("hidden");

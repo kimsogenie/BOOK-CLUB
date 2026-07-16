@@ -95,7 +95,8 @@ window.__mockSeed = {
       created_at: new Date().toISOString()
     }
   ],
-  recommendation_votes: []
+  recommendation_votes: [],
+  feedback: []
 };
 
 // 데모 모드에서 "코드로 찾기"를 바로 체험할 수 있도록 코드 안내

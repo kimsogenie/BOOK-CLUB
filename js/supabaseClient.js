@@ -75,6 +75,20 @@ const DB = {
     return (data || []).map(r => r.clubs).filter(Boolean);
   },
 
+  // ================= 오류 신고 / 의견 =================
+  async submitFeedback(message, name, email, page) {
+    if (DEMO_MODE) {
+      const row = { id: mockUid(), message, submitter_name: name || null, submitter_email: email || null, page: page || null, created_at: new Date().toISOString() };
+      getMockStore().feedback.push(row);
+      return row;
+    }
+    const { data, error } = await sb.from("feedback").insert({
+      message, submitter_name: name || null, submitter_email: email || null, page: page || null
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
   // ================= 모임 (clubs) =================
   async createClub(name, ownerName, ownerId) {
     const invite_code = genInviteCode();
