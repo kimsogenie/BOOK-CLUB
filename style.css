@@ -41,12 +41,8 @@ body {
   display: flex; flex-direction: column; align-items: center;
   padding: 60px 20px 40px;
 }
-.landing-hero { text-align: left; width: 100%; max-width: 720px; margin-bottom: 32vh; }
-.landing-hero-title {
-  font-size: 44px; font-weight: 800; color: #fffdf8; letter-spacing: 1px;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.15);
-}
-.landing-hero-sub { font-size: 15px; color: #fff6e2; margin-top: 8px; }
+.landing-hero { text-align: center; width: 100%; max-width: 720px; padding-top: 38vh; margin-bottom: 18vh; }
+.landing-hero-sub { font-size: 16px; font-weight: 600; color: #fff6e2; margin-top: 0; text-shadow: 0 2px 10px rgba(0,0,0,0.4); }
 
 .landing-cards {
   width: 100%; max-width: 720px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
@@ -99,7 +95,6 @@ body {
 }
 
 @media (max-width: 620px) {
-  .landing-hero-title { font-size: 34px; }
   .landing-cards { grid-template-columns: 1fr; }
 }
 
