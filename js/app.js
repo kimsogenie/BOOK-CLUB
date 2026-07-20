@@ -42,6 +42,14 @@ const state = {
   userEmail: null
 };
 
+// ---------------- GTM 이벤트 트래킹 ----------------
+function trackEvent(name, params) {
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: name }, params || {}));
+  } catch (e) { /* 트래킹 실패는 무시 */ }
+}
+
 // ---------------- 유틸 ----------------
 function esc(s) {
   if (s == null) return "";
@@ -254,6 +262,7 @@ function initFeedback() {
         ok = true;
       } catch (e) { /* 네트워크 문제 등 - 무시 */ }
       if (ok) {
+        trackEvent("feedback_submitted", {});
         closeGenericModal();
         showToast("보내주셔서 감사해요 🙏");
       } else {
@@ -321,6 +330,7 @@ function initLandingHandlers() {
     try {
       const club = await DB.createClub(name, myName, state.userId);
       if (DB.isDemo) { state.myName = myName; localStorage.setItem("clubMyName", myName); }
+      trackEvent("club_created", { club_name: name });
       msg.textContent = "";
       document.getElementById("createdInviteCode").textContent = club.invite_code;
       document.getElementById("clubCreatedModal").classList.remove("hidden");
@@ -342,6 +352,7 @@ function initLandingHandlers() {
       if (!club) { msg.textContent = "해당 코드의 모임을 찾을 수 없어요. 코드를 다시 확인해주세요."; return; }
       await DB.joinClub(club.id, myName, state.userId);
       if (DB.isDemo) { state.myName = myName; localStorage.setItem("clubMyName", myName); }
+      trackEvent("club_joined", { club_name: club.name });
       msg.textContent = "";
       await enterApp(club);
     } catch (e) {
@@ -430,6 +441,7 @@ function initCoverEditor() {
         const url = await DB.uploadCoverImage(file);
         await DB.updateClub(state.clubId, { cover_url: url });
         state.club.cover_url = url;
+        trackEvent("cover_uploaded", { club_name: state.club.name });
         closeGenericModal();
         showToast("커버 이미지를 저장했어요 ✓");
       } catch (e) {
@@ -473,12 +485,14 @@ async function refreshUserDependentViews() {
 
 function initLeaveAndDelete() {
   document.getElementById("backHomeBtn").onclick = () => {
+    trackEvent("go_home", { club_name: state.club && state.club.name });
     localStorage.removeItem("clubId");
     location.reload();
   };
   document.getElementById("leaveClubBtn").onclick = async () => {
     if (!confirm("정말로 이 모임에서 나가시겠어요? 멤버 목록에서 빠지고, 다시 참여하려면 초대 코드가 필요해요.")) return;
     try { if (state.myName) await DB.kickMember(state.clubId, state.myName); } catch (e) { /* 무시 */ }
+    trackEvent("club_left", { club_name: state.club && state.club.name });
     localStorage.removeItem("clubId");
     location.reload();
   };
@@ -487,6 +501,7 @@ function initLeaveAndDelete() {
     if (!confirm("정말로 모임을 삭제할까요? 책, 활동기록, 추천 등 모든 데이터가 사라지고 되돌릴 수 없어요.")) return;
     if (!confirm("마지막 확인이에요. 정말 삭제할까요?")) return;
     await DB.deleteClub(state.clubId);
+    trackEvent("club_deleted", { club_name: state.club && state.club.name });
     localStorage.removeItem("clubId");
     location.reload();
   };
