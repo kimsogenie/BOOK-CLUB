@@ -1,0 +1,15 @@
+{
+  "name": "BOOK CLUB 독서모임",
+  "short_name": "BOOK CLUB",
+  "description": "우리만의 독서모임을 만들고 함께 기록해요",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f8f2e4",
+  "theme_color": "#b9862f",
+  "icons": [
+    { "src": "assets/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

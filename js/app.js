@@ -309,6 +309,28 @@ async function boot() {
   else showLoginOnly();
 }
 
+// ---------------- 초대 링크 자동입력 / 공유 ----------------
+function getJoinCodeFromUrl() {
+  try {
+    return (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
+  } catch (e) { return ""; }
+}
+function buildInviteUrl(club) {
+  return `${location.origin}${location.pathname}?join=${encodeURIComponent(club.invite_code)}`;
+}
+async function shareInvite(club) {
+  const url = buildInviteUrl(club);
+  const text = `"${club.name}" 독서모임에 초대합니다! 아래 링크로 들어와서 참여해보세요.\n초대 코드: ${club.invite_code}`;
+  trackEvent("invite_shared", { club_name: club.name });
+  if (navigator.share) {
+    try { await navigator.share({ title: `${club.name} 독서모임 초대`, text, url }); }
+    catch (e) { /* 사용자가 공유를 취소했을 수도 있음 */ }
+    return;
+  }
+  copyText(`${text}\n${url}`);
+  showToast("초대 링크를 복사했어요 ✓");
+}
+
 function showLanding() {
   document.getElementById("landingScreen").classList.remove("hidden");
   document.getElementById("appScreen").classList.add("hidden");
@@ -318,6 +340,13 @@ function showLanding() {
     document.getElementById("joinNameField").classList.add("hidden");
   }
   renderRecentClubs();
+
+  const joinCode = getJoinCodeFromUrl();
+  if (joinCode) {
+    const codeInput = document.getElementById("joinClubCode");
+    if (codeInput) codeInput.value = joinCode;
+    history.replaceState({}, "", location.pathname);
+  }
 }
 
 function initLandingHandlers() {
@@ -335,6 +364,7 @@ function initLandingHandlers() {
       document.getElementById("createdInviteCode").textContent = club.invite_code;
       document.getElementById("clubCreatedModal").classList.remove("hidden");
       document.getElementById("copyInviteCodeBtn").onclick = () => copyText(club.invite_code);
+      document.getElementById("shareCreatedInviteBtn").onclick = () => shareInvite(club);
       document.getElementById("enterDashboardBtn").onclick = () => enterApp(club);
     } catch (e) {
       msg.textContent = "모임 생성에 실패했어요. 잠시 후 다시 시도해주세요.";
@@ -386,6 +416,9 @@ async function enterApp(club) {
   badge.classList.remove("hidden");
   badge.title = "클릭하면 코드가 복사돼요";
   badge.onclick = () => copyText(club.invite_code);
+  const shareBtn = document.getElementById("shareInviteBtn");
+  shareBtn.classList.remove("hidden");
+  shareBtn.onclick = () => shareInvite(club);
 
   if (DB.isDemo) document.getElementById("demoBanner").classList.remove("hidden");
 
@@ -399,6 +432,7 @@ async function enterApp(club) {
   initBookOwnerActions();
   initLeaveAndDelete();
   initCoverEditor();
+  initGallery();
   renderActivityForm();
   renderRecoForm();
 
@@ -407,6 +441,7 @@ async function enterApp(club) {
   await loadRecommendations();
   await loadArchive();
   await loadMyPage();
+  await loadGallery();
 }
 
 function updateOwnerUI() {
@@ -444,6 +479,82 @@ function initCoverEditor() {
         trackEvent("cover_uploaded", { club_name: state.club.name });
         closeGenericModal();
         showToast("커버 이미지를 저장했어요 ✓");
+      } catch (e) {
+        alert("업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
+      }
+    });
+  };
+}
+
+// ---------------- 모임 갤러리 ----------------
+async function loadGallery() {
+  const grid = document.getElementById("galleryGrid");
+  if (!grid) return;
+  const photos = await DB.getGalleryPhotos(state.clubId);
+  if (!photos.length) {
+    grid.innerHTML = `<div class="gallery-empty">아직 올라온 사진이 없어요. 첫 사진을 올려보세요!</div>`;
+    return;
+  }
+  grid.innerHTML = photos.map(p => `
+    <div class="gallery-item" data-photo-id="${esc(p.id)}">
+      <img src="${esc(p.image_url)}" alt="">
+      <div class="gallery-item-meta">${esc(p.uploader_name || "익명")} · ${esc((p.created_at || "").slice(0, 10))}</div>
+    </div>
+  `).join("");
+  grid.querySelectorAll("[data-photo-id]").forEach(el => {
+    el.addEventListener("click", () => {
+      const photo = photos.find(p => p.id === el.dataset.photoId);
+      if (photo) openGalleryLightbox(photo);
+    });
+  });
+}
+
+function openGalleryLightbox(photo) {
+  const canDelete = state.isOwner || (state.myName && photo.uploader_name === state.myName);
+  document.getElementById("galleryLightboxBody").innerHTML = `
+    <img src="${esc(photo.image_url)}" alt="">
+    <div class="gallery-lightbox-meta">${esc(photo.uploader_name || "익명")} · ${esc((photo.created_at || "").slice(0, 10))}${photo.caption ? " · " + esc(photo.caption) : ""}</div>
+    <p style="font-size:12px;color:var(--muted)">사진을 길게 눌러서 "이미지 저장"을 선택하면 휴대폰에 저장할 수 있어요.</p>
+    ${canDelete ? `<div class="submit-row"><button class="ghost-btn small danger" id="deleteGalleryPhotoBtn">삭제</button></div>` : ""}
+  `;
+  document.getElementById("galleryLightbox").classList.remove("hidden");
+  if (canDelete) {
+    document.getElementById("deleteGalleryPhotoBtn").onclick = async () => {
+      if (!confirm("이 사진을 삭제할까요?")) return;
+      await DB.deleteGalleryPhoto(photo.id);
+      document.getElementById("galleryLightbox").classList.add("hidden");
+      await loadGallery();
+    };
+  }
+}
+
+function initGallery() {
+  document.getElementById("closeGalleryLightbox").onclick = () => {
+    document.getElementById("galleryLightbox").classList.add("hidden");
+  };
+  document.getElementById("addGalleryPhotoBtn").onclick = () => {
+    if (!requireName()) return;
+    openGenericModal(`
+      <h3>📷 사진 올리기</h3>
+      <label>사진 선택 (5MB 이하)</label>
+      <input type="file" id="galleryFileInput" accept="image/*">
+      <label>한 마디 (선택)</label>
+      <input type="text" id="galleryCaption" placeholder="예: 뒤풀이 사진이에요">
+      <div class="submit-row"><button class="primary-btn" id="submitGalleryPhoto">올리기</button></div>
+    `);
+    document.getElementById("submitGalleryPhoto").addEventListener("click", async () => {
+      const fileInput = document.getElementById("galleryFileInput");
+      const file = fileInput.files[0];
+      if (!file) { alert("사진을 선택해주세요."); return; }
+      if (file.size > 5 * 1024 * 1024) { alert("5MB 이하 사진으로 올려주세요."); return; }
+      const caption = document.getElementById("galleryCaption").value.trim();
+      try {
+        const url = await DB.uploadGalleryPhoto(file);
+        await DB.addGalleryPhoto(state.clubId, url, state.myName, caption);
+        trackEvent("gallery_photo_uploaded", { club_name: state.club && state.club.name });
+        closeGenericModal();
+        showToast("사진을 올렸어요 ✓");
+        await loadGallery();
       } catch (e) {
         alert("업로드에 실패했어요. 잠시 후 다시 시도해주세요.");
       }
@@ -563,12 +674,14 @@ async function loadCurrentBook() {
   const book = await DB.getCurrentBook(state.clubId);
   state.currentBook = book;
   const wrap = document.getElementById("currentBook");
+  renderMeetingBanner(book);
   if (!book) {
     wrap.innerHTML = state.isOwner
       ? "<p>등록된 진행 중인 책이 없어요. 위의 '+ 책 등록' 버튼으로 추가해보세요.</p>"
       : "<p>등록된 진행 중인 책이 없어요.</p>";
     document.getElementById("progressBarWrap").innerHTML = "";
     document.getElementById("participationBody").innerHTML = "";
+    await loadClubStats(null);
     return;
   }
   const stats = await DB.getBookStats(book.id);
@@ -588,6 +701,62 @@ async function loadCurrentBook() {
   renderProgressBar(stats);
   await loadParticipation();
   await loadActivities();
+  await loadClubStats(book, stats);
+}
+
+// ---------------- 다음 모임 D-day 배너 ----------------
+function buildGCalUrl(book) {
+  const start = new Date(book.meeting_date + "T00:00:00");
+  const end = new Date(start.getTime() + 86400000);
+  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, "");
+  const text = encodeURIComponent(`📚 ${book.title} 독서모임`);
+  const details = encodeURIComponent(`${state.club ? state.club.name : ""} 독서모임 - ${book.title}`);
+  return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
+}
+
+function renderMeetingBanner(book) {
+  const el = document.getElementById("meetingBanner");
+  if (!book || !book.meeting_date) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const meeting = new Date(book.meeting_date + "T00:00:00");
+  const diffDays = Math.round((meeting - today) / 86400000);
+  let label;
+  if (diffDays > 0) label = `다음 모임까지 D-${diffDays}`;
+  else if (diffDays === 0) label = `오늘이 모임 날이에요!`;
+  else label = `${book.meeting_date} (지난 모임)`;
+  el.classList.remove("hidden");
+  el.innerHTML = `
+    <span>📅 ${esc(label)} · <b>${esc(book.title)}</b></span>
+    ${diffDays >= 0 ? `<a class="ghost-btn small" href="${buildGCalUrl(book)}" target="_blank" rel="noopener">캘린더에 추가</a>` : ""}
+  `;
+}
+
+// ---------------- 이번 모임 통계 / 랭킹 ----------------
+async function loadClubStats(book, statsArg) {
+  const body = document.getElementById("clubStatsBody");
+  if (!body) return;
+  if (!book) {
+    body.innerHTML = `<p class="stats-empty">등록된 진행 중인 책이 없어요.</p>`;
+    return;
+  }
+  const stats = statsArg || await DB.getBookStats(book.id);
+  const pct = stats.participant_count ? Math.round((stats.finished_count / stats.participant_count) * 100) : 0;
+  const counts = await DB.getActivityCountsByAuthor(book.id);
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const medals = ["🥇", "🥈", "🥉"];
+  body.innerHTML = `
+    <div class="stats-grid">
+      <span class="stat-pill">⭐ 평균 별점 ${stats.avg_rating != null ? stats.avg_rating : "-"}</span>
+      <span class="stat-pill">✅ 완독률 ${pct}% (${stats.finished_count}/${stats.participant_count}명)</span>
+    </div>
+    ${ranked.length ? `
+      <ul class="stats-rank">
+        ${ranked.map(([name, count], i) => `
+          <li><span class="rank-medal">${medals[i]}</span> ${esc(name)} <span class="rank-count">활동 ${count}건</span></li>
+        `).join("")}
+      </ul>
+    ` : `<p class="stats-empty">아직 활동 기록이 없어요.</p>`}
+  `;
 }
 
 function renderProgressBar(stats) {

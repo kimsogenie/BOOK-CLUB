@@ -229,6 +229,57 @@ const DB = {
     return true;
   },
 
+  // ================= 모임 갤러리 =================
+  async uploadGalleryPhoto(file) {
+    if (DEMO_MODE) {
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await sb.storage.from("gallery").upload(path, file, { upsert: false });
+    if (error) throw error;
+    const { data } = sb.storage.from("gallery").getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  async addGalleryPhoto(clubId, imageUrl, uploaderName, caption) {
+    if (DEMO_MODE) {
+      const row = { id: mockUid(), club_id: clubId, image_url: imageUrl, uploader_name: uploaderName || null, caption: caption || null, created_at: new Date().toISOString() };
+      getMockStore().gallery_photos.push(row);
+      return row;
+    }
+    const { data, error } = await sb.from("gallery_photos").insert({
+      club_id: clubId, image_url: imageUrl, uploader_name: uploaderName || null, caption: caption || null
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getGalleryPhotos(clubId) {
+    if (DEMO_MODE) {
+      return getMockStore().gallery_photos.filter(p => p.club_id === clubId).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    }
+    const { data, error } = await sb.from("gallery_photos").select("*").eq("club_id", clubId).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async deleteGalleryPhoto(photoId) {
+    if (DEMO_MODE) {
+      const store = getMockStore();
+      store.gallery_photos = store.gallery_photos.filter(p => p.id !== photoId);
+      return true;
+    }
+    const { error } = await sb.from("gallery_photos").delete().eq("id", photoId);
+    if (error) throw error;
+    return true;
+  },
+
   // ================= 공지사항 =================
   async getLatestAnnouncement(clubId) {
     if (DEMO_MODE) {
@@ -381,6 +432,23 @@ const DB = {
       acts.sort((a, b) => b.created_at.localeCompare(a.created_at));
     }
     return acts;
+  },
+
+  async getActivityCountsByAuthor(bookId) {
+    let acts;
+    if (DEMO_MODE) {
+      acts = getMockStore().activities.filter(a => a.book_id === bookId);
+    } else {
+      const { data, error } = await sb.from("activities").select("author_name").eq("book_id", bookId);
+      if (error) throw error;
+      acts = data || [];
+    }
+    const counts = {};
+    for (const a of acts) {
+      const name = a.author_name || "익명";
+      counts[name] = (counts[name] || 0) + 1;
+    }
+    return counts;
   },
 
   async addActivity(payload) {

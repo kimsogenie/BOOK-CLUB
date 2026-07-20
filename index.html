@@ -13,6 +13,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <title>BOOK CLUB</title>
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b9862f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BOOK CLUB">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -83,6 +89,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p style="font-size:13px;color:var(--muted)">아래 코드를 멤버들에게 공유하세요. 이 코드로 "내 독서모임 찾기"에서 바로 들어올 수 있어요.</p>
     <div class="invite-code-display" id="createdInviteCode"></div>
     <button class="ghost-btn small" id="copyInviteCodeBtn">코드 복사</button>
+    <button class="ghost-btn small" id="shareCreatedInviteBtn">🔗 링크 공유</button>
     <div class="submit-row"><button class="primary-btn" id="enterDashboardBtn">대시보드로 이동</button></div>
   </div>
 </div>
@@ -101,7 +108,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="brand">📚 <span id="clubTitle">BOOK CLUB</span> <span id="inviteCodeBadge" class="invite-badge hidden"></span></div>
+    <div class="brand">📚 <span id="clubTitle">BOOK CLUB</span> <span id="inviteCodeBadge" class="invite-badge hidden"></span> <button id="shareInviteBtn" class="ghost-btn small hidden">🔗 초대</button></div>
     <div class="whoami">
       <span id="whoamiName">-</span>
       <button id="backHomeBtn" class="ghost-btn small">🏠 홈으로</button>
@@ -118,6 +125,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <main class="dashboard">
+
+  <!-- 📅 다음 모임 D-day -->
+  <div id="meetingBanner" class="meeting-banner hidden"></div>
 
   <!-- 📢 공지사항 -->
   <section class="card announcement-card">
@@ -138,6 +148,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
     <div id="currentBook" class="current-book">불러오는 중...</div>
+  </section>
+
+  <!-- 🏆 이번 모임 통계 -->
+  <section class="card" id="statsCard">
+    <div class="section-title">🏆 이번 모임 통계</div>
+    <div id="clubStatsBody">불러오는 중...</div>
   </section>
 
   <!-- 👥 참여 현황 -->
@@ -186,6 +202,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="recoList" class="reco-list"></div>
   </details>
 
+  <!-- 📷 모임 갤러리 -->
+  <details class="card toggle-card" open>
+    <summary class="section-title">📷 모임 갤러리</summary>
+    <p class="gallery-hint">모임 사진을 올려보세요. 사진을 길게 누르면 휴대폰에 저장할 수 있어요.</p>
+    <button id="addGalleryPhotoBtn" class="primary-btn small">+ 사진 올리기</button>
+    <div id="galleryGrid" class="gallery-grid"></div>
+  </details>
+
   <!-- 📂 지난 독서모임 -->
   <details class="card toggle-card">
     <summary class="section-title">📂 지난 독서모임</summary>
@@ -212,6 +236,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="modal-box">
     <button class="modal-close" id="closeBookDetail">✕</button>
     <div id="bookDetailBody"></div>
+  </div>
+</div>
+
+<!-- 갤러리 사진 크게 보기 -->
+<div id="galleryLightbox" class="modal hidden">
+  <div class="modal-box gallery-lightbox-box">
+    <button class="modal-close" id="closeGalleryLightbox">✕</button>
+    <div id="galleryLightboxBody"></div>
   </div>
 </div>
 
