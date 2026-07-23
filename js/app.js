@@ -490,7 +490,13 @@ function initCoverEditor() {
 async function loadGallery() {
   const grid = document.getElementById("galleryGrid");
   if (!grid) return;
-  const photos = await DB.getGalleryPhotos(state.clubId);
+  let photos;
+  try {
+    photos = await DB.getGalleryPhotos(state.clubId);
+  } catch (e) {
+    grid.innerHTML = `<div class="gallery-empty">갤러리를 아직 사용할 수 없어요. (Supabase 설정 확인 필요)</div>`;
+    return;
+  }
   if (!photos.length) {
     grid.innerHTML = `<div class="gallery-empty">아직 올라온 사진이 없어요. 첫 사진을 올려보세요!</div>`;
     return;
@@ -854,6 +860,7 @@ async function loadCurrentBookStatsOnly(stats) {
     pills[1].textContent = `⭐ 평균 ${stats.avg_rating != null ? stats.avg_rating : "-"}`;
     pills[2].textContent = `👥 참여 ${stats.participant_count}명`;
   }
+  await loadClubStats(state.currentBook, stats);
 }
 
 function initAddParticipant() {
