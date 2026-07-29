@@ -58,11 +58,11 @@ window.__mockSeed = {
     }
   ],
   participations: [
-    { id: uid(), book_id: bookOngoingId, participant_name: "소진", reading_status: "reading", rating: null, one_liner: "", started_at: "2026-07-10", finished_at: null, created_at: new Date().toISOString() },
-    { id: uid(), book_id: bookOngoingId, participant_name: "민지", reading_status: "done", rating: 5, one_liner: "울면서 봤어요", started_at: "2026-07-05", finished_at: "2026-07-14", created_at: new Date().toISOString() },
-    { id: uid(), book_id: bookOngoingId, participant_name: "현우", reading_status: "before", rating: null, one_liner: "", started_at: null, finished_at: null, created_at: new Date().toISOString() },
-    { id: uid(), book_id: bookPastId, participant_name: "소진", reading_status: "done", rating: 4, one_liner: "따뜻한 위로가 되는 책", started_at: "2026-04-20", finished_at: "2026-05-01", created_at: new Date().toISOString() },
-    { id: uid(), book_id: bookPastId, participant_name: "민지", reading_status: "done", rating: 4, one_liner: "잔잔하고 좋았음", started_at: "2026-04-22", finished_at: "2026-05-02", created_at: new Date().toISOString() }
+    { id: uid(), book_id: bookOngoingId, participant_name: "소진", reading_status: "reading", expectation: "제목처럼 감정에 대한 이야기일지 궁금해요", rating: null, one_liner: "", started_at: "2026-07-10", finished_at: null, created_at: new Date().toISOString() },
+    { id: uid(), book_id: bookOngoingId, participant_name: "민지", reading_status: "done", expectation: "성장 소설 좋아해서 기대돼요", rating: 5, one_liner: "울면서 봤어요", started_at: "2026-07-05", finished_at: "2026-07-14", created_at: new Date().toISOString() },
+    { id: uid(), book_id: bookOngoingId, participant_name: "현우", reading_status: "before", expectation: "", rating: null, one_liner: "", started_at: null, finished_at: null, created_at: new Date().toISOString() },
+    { id: uid(), book_id: bookPastId, participant_name: "소진", reading_status: "done", expectation: "", rating: 4, one_liner: "따뜻한 위로가 되는 책", started_at: "2026-04-20", finished_at: "2026-05-01", created_at: new Date().toISOString() },
+    { id: uid(), book_id: bookPastId, participant_name: "민지", reading_status: "done", expectation: "", rating: 4, one_liner: "잔잔하고 좋았음", started_at: "2026-04-22", finished_at: "2026-05-02", created_at: new Date().toISOString() }
   ],
   activities: [
     {

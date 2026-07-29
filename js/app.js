@@ -2,7 +2,7 @@
 // 독서모임 대시보드 - 메인 앱 로직
 // ==========================================================
 
-const TYPE_LABEL = { quote: "문장 수집", topic: "발제", review: "독후감", reflection: "토론 후 감상" };
+const TYPE_LABEL = { quote: "문장 수집", topic: "발제", review: "독후감" };
 const TYPE_FIELDS = {
   quote: [
     { key: "quote_text", label: "인상 깊은 문장", type: "textarea", required: true },
@@ -11,8 +11,7 @@ const TYPE_FIELDS = {
   ],
   topic: [
     { key: "topic_question", label: "질문", type: "textarea", required: true },
-    { key: "topic_reason", label: "질문을 던진 이유", type: "textarea" },
-    { key: "topic_my_thought", label: "내 생각", type: "textarea" }
+    { key: "topic_reason", label: "질문을 던진 이유", type: "textarea" }
   ],
   review: [
     { key: "review_rating", label: "별점 (1~5)", type: "number" },
@@ -20,11 +19,6 @@ const TYPE_FIELDS = {
     { key: "review_pros", label: "좋았던 점", type: "textarea" },
     { key: "review_cons", label: "아쉬웠던 점", type: "textarea" },
     { key: "review_quote", label: "오래 기억에 남는 문장", type: "textarea" }
-  ],
-  reflection: [
-    { key: "reflection_story", label: "가장 기억에 남는 이야기", type: "textarea", required: true },
-    { key: "reflection_learning", label: "새롭게 알게 된 점", type: "textarea" },
-    { key: "reflection_expectation", label: "다음 책에서 기대하는 점", type: "textarea" }
   ]
 };
 const STATUS_LABEL = { before: "시작 전", reading: "읽는 중", done: "완독" };
@@ -828,12 +822,13 @@ async function loadParticipation() {
           ${Object.entries(STATUS_LABEL).map(([k, v]) => `<option value="${k}" ${r.reading_status === k ? "selected" : ""}>${v}</option>`).join("")}
         </select>
       </td>
+      <td><input type="text" data-field="expectation" value="${esc(r.expectation || "")}" placeholder="이 책에 기대하는 점"></td>
       <td><input type="number" min="1" max="5" data-field="rating" value="${r.rating ?? ""}" style="width:50px"></td>
       <td><input type="text" data-field="one_liner" value="${esc(r.one_liner || "")}"></td>
       <td><input type="date" data-field="started_at" value="${r.started_at || ""}"></td>
       <td><input type="date" data-field="finished_at" value="${r.finished_at || ""}"></td>
     </tr>
-  `).join("") || `<tr><td colspan="6" style="color:#999">아직 참여자가 없어요.</td></tr>`;
+  `).join("") || `<tr><td colspan="7" style="color:#999">아직 참여자가 없어요.</td></tr>`;
 
   tbody.querySelectorAll("tr").forEach(tr => {
     const id = tr.dataset.id;
@@ -921,11 +916,7 @@ function renderActivityForm() {
 }
 
 function deriveTitle(type, payload) {
-  const clip = (s, n) => (s || "").slice(0, n);
-  if (type === "quote") return clip(payload.quote_text, 24) || "문장 수집";
-  if (type === "topic") return clip(payload.topic_question, 30) || "발제";
   if (type === "review") return `${payload.author_name}의 독후감`;
-  if (type === "reflection") return `토론 후 감상 - ${payload.author_name}`;
   return TYPE_LABEL[type];
 }
 
@@ -945,17 +936,12 @@ function renderActivityBody(type, a) {
   } else if (type === "topic") {
     rows.push(["질문", a.topic_question]);
     if (a.topic_reason) rows.push(["이유", a.topic_reason]);
-    if (a.topic_my_thought) rows.push(["내 생각", a.topic_my_thought]);
   } else if (type === "review") {
     if (a.review_rating) rows.push(["별점", "⭐".repeat(a.review_rating)]);
     if (a.review_one_liner) rows.push(["한 줄 평", a.review_one_liner]);
     if (a.review_pros) rows.push(["좋았던 점", a.review_pros]);
     if (a.review_cons) rows.push(["아쉬웠던 점", a.review_cons]);
     if (a.review_quote) rows.push(["기억에 남는 문장", a.review_quote]);
-  } else if (type === "reflection") {
-    rows.push(["기억에 남는 이야기", a.reflection_story]);
-    if (a.reflection_learning) rows.push(["새롭게 알게 된 점", a.reflection_learning]);
-    if (a.reflection_expectation) rows.push(["다음 책 기대", a.reflection_expectation]);
   }
   return `<dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
 }
@@ -1138,7 +1124,7 @@ async function openBookDetail(bookId) {
   const book = await DB.getBookById(bookId);
   const stats = await DB.getBookStats(bookId);
   const parts = await DB.getParticipations(bookId);
-  const types = ["review", "topic", "quote", "reflection"];
+  const types = ["review", "topic", "quote"];
   const sections = await Promise.all(types.map(async t => ({ t, list: await DB.getActivities(bookId, t, "new", state.myName) })));
 
   const body = document.getElementById("bookDetailBody");
@@ -1148,8 +1134,8 @@ async function openBookDetail(bookId) {
     <p style="font-size:13px">${esc(book.description || "")}</p>
     <h4>참여 기록</h4>
     <div class="table-scroll">
-      <table class="data-table"><thead><tr><th>참여자</th><th>별점</th><th>한 줄 평</th></tr></thead>
-        <tbody>${parts.map(p => `<tr><td>${esc(p.participant_name)}</td><td>${p.rating ? "⭐".repeat(p.rating) : "-"}</td><td>${esc(p.one_liner || "")}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#999">기록 없음</td></tr>`}</tbody>
+      <table class="data-table"><thead><tr><th>참여자</th><th>기대 포인트</th><th>별점</th><th>한 줄 평</th></tr></thead>
+        <tbody>${parts.map(p => `<tr><td>${esc(p.participant_name)}</td><td>${esc(p.expectation || "-")}</td><td>${p.rating ? "⭐".repeat(p.rating) : "-"}</td><td>${esc(p.one_liner || "")}</td></tr>`).join("") || `<tr><td colspan="4" style="color:#999">기록 없음</td></tr>`}</tbody>
       </table>
     </div>
     ${sections.map(s => `
@@ -1169,7 +1155,7 @@ async function loadMyPage() {
     return;
   }
   const { participations, activities } = await DB.getMyData(state.clubId, state.myName);
-  const grouped = { quote: [], topic: [], review: [], reflection: [] };
+  const grouped = { quote: [], topic: [], review: [] };
   activities.forEach(a => { if (grouped[a.type]) grouped[a.type].push(a); });
 
   container.innerHTML = `

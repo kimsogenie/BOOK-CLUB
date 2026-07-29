@@ -198,7 +198,7 @@ body {
 
 /* 테이블 */
 .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.data-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+.data-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
 .data-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .data-table td { padding: 6px 8px; border-bottom: 1px solid #f1ede3; }
 .data-table td:first-child { white-space: nowrap; }
@@ -213,6 +213,7 @@ body {
 .ghost-btn {
   background: transparent; border: 1px solid var(--line); color: var(--ink);
   border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit;
+  display: inline-block; text-decoration: none;
 }
 .ghost-btn.small { padding: 3px 8px; font-size: 11px; }
 .ghost-btn.danger { color: #c0392b; border-color: #f0c4bb; }

@@ -389,7 +389,7 @@ const DB = {
     if (DEMO_MODE) {
       const row = {
         id: mockUid(), book_id: bookId, participant_name: name, reading_status: "before",
-        rating: null, one_liner: "", started_at: null, finished_at: null, created_at: new Date().toISOString()
+        expectation: "", rating: null, one_liner: "", started_at: null, finished_at: null, created_at: new Date().toISOString()
       };
       getMockStore().participations.push(row);
       return row;
